@@ -2,25 +2,45 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
-
-
 public class MirrorBehavior : MonoBehaviour
 {
-    private Rigidbody rb;
-    public float moveSpeed = 2f;
+    [SerializeField] private float movementSpeed = 2f;  
+    private Rigidbody mirrorRigidbody;
+    private bool isPlayerNearby = false;
 
-    void Start()
+    private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        rb.isKinematic = true; // Make the Rigidbody kinematic to prevent physics issues
+        mirrorRigidbody = GetComponent<Rigidbody>();
+        if (mirrorRigidbody == null)
+        {
+            Debug.LogError("Rigidbody component missing on Mirror object.");
+            return;
+        }
+
+        mirrorRigidbody.isKinematic = true;}
+
+    private void Update()
+    {if (isPlayerNearby)
+        {
+            HandleMirrorMovement();
+        }}
+
+    private void HandleMirrorMovement()
+    {
+        Vector3 randomMovement = new Vector3(
+            Mathf.Sin(Time.time) * movementSpeed * Time.deltaTime, 
+            0f, 
+            Mathf.Cos(Time.time) * movementSpeed * Time.deltaTime);
+
+        mirrorRigidbody.MovePosition(transform.position + randomMovement);
     }
 
     private void OnCollisionEnter(Collision collision)
     {
         if (collision.collider.CompareTag("Player"))
         {
-            rb.isKinematic = false; // Allow the mirror to move when hit by the player
+            isPlayerNearby = true;
+            mirrorRigidbody.isKinematic = false;
         }
     }
 
@@ -28,9 +48,8 @@ public class MirrorBehavior : MonoBehaviour
     {
         if (collision.collider.CompareTag("Player"))
         {
-            rb.isKinematic = true; // Stop moving the mirror when the player stops colliding
+            isPlayerNearby = false;
+            mirrorRigidbody.isKinematic = true;
         }
     }
 }
-
-

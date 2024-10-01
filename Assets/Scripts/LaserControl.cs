@@ -4,79 +4,109 @@ using UnityEngine;
 
 public class Laser : MonoBehaviour
 {
-    private int _maxBounce = 20;               // Maximum number of laser bounces
-    private int _count;                        // Count of current laser reflections
-    private LineRenderer _laser;               // Reference to the LineRenderer component
+    [SerializeField] private int maxReflections = 20;            
+    [SerializeField] private float laserLength = 300f;           
+    [SerializeField] private Vector3 laserOffset;                
 
-    [SerializeField]
-    private Vector3 _offSet;                   // Offset to position the laser correctly
+    private LineRenderer laserRenderer;
 
-    void Start()
+    private void Awake()
     {
-        _laser = GetComponent<LineRenderer>(); // Get the LineRenderer component
-        _laser.positionCount = _maxBounce;     // Set the number of positions in the LineRenderer
-    }
+        laserRenderer = GetComponent<LineRenderer>();
 
-    void Update()
-    {
-        _count = 0;                            // Reset the count of reflections
-        castLaser(transform.position + _offSet, transform.forward); // Start the laser cast
-    }
+        if (laserRenderer == null) {
+            Debug.LogError("LineRenderer component is missing on Laser object.");
+            return;
+        }
 
-    void castLaser(Vector3 position, Vector3 direction)
-    {
-        _laser.SetPosition(0, transform.position + _offSet);  // Set initial position of the laser
+        Material laserMaterial = new Material(Shader.Find("Unlit/Color"));
+        laserMaterial.color = Color.red;  
+        laserRenderer.material = laserMaterial;
 
-        for (int i = 0; i < _maxBounce; i++)
+        laserRenderer.startColor = Color.red;
+        laserRenderer.endColor = Color.red;
+        laserRenderer.positionCount = maxReflections + 1;
+        laserRenderer.useWorldSpace = true;
+        laserRenderer.startWidth = 0.1f;
+        laserRenderer.endWidth = 0.1f;
+
+        for (int i = 0; i <= maxReflections; i++) 
         {
-            Ray ray = new Ray(position, direction);           // Create a ray at the given position and direction
-            RaycastHit hit;
+            laserRenderer.SetPosition(i, transform.position);
+        }
+    }
 
-            if (Physics.Raycast(ray, out hit, 300))
+    private void Start()
+    {
+        FireLaser(transform.position + laserOffset, transform.forward);
+    }
+
+    private void Update()
+    {
+        FireLaser(transform.position + laserOffset, transform.forward);
+    }
+
+    private void FireLaser(Vector3 startPosition, Vector3 direction)
+    {
+        int currentReflection = 0;
+        laserRenderer.SetPosition(0, startPosition);
+
+        while (currentReflection < maxReflections)
+        {
+            if (TryReflectLaser(startPosition, direction, out Vector3 hitPosition, out Vector3 newDirection))
             {
-                position = hit.point;                        // Update position to the hit point
-                direction = Vector3.Reflect(direction, hit.normal); // Reflect direction based on the hit normal
-
-                _laser.SetPosition(i + 1, hit.point);        // Set position in the LineRenderer
-
-                // Check for interaction with other objects
-                if (hit.transform.CompareTag("Player"))
-                {
-                    Debug.Log("Player hit by laser. Game Over.");
-                    Destroy(hit.transform.gameObject);       // Destroy the player or trigger a death event
-                    break;
-                }
-                else if (hit.transform.CompareTag("Target"))
-                {
-                    
-                    TargetBehavior targetBehavior = hit.transform.GetComponent<TargetBehavior>();
-                    if (targetBehavior != null)
-                    {
-                        targetBehavior.ActivatePlatform();  // Activate the platform using the target's script
-                    }
-                    break;
-                }
-                else if (hit.transform.CompareTag("Mirror"))
-                {
-                    // Continue the reflection logic, already handled by direction update
-                }
-                else
-                {
-                    // If it hits an object that is not a Mirror, Player, or Target, stop reflecting
-                    for (int j = i + 1; j < _maxBounce; j++)
-                    {
-                        _laser.SetPosition(j, hit.point);  // Set all remaining positions to the hit point
-                    }
-                    break;
-                }
+                startPosition = hitPosition;
+                direction = newDirection;
+                laserRenderer.SetPosition(currentReflection + 1, hitPosition);
+                currentReflection++;
             }
             else
             {
-                // If no objects are hit, set the laser to maximum length
-                _laser.SetPosition(i + 1, ray.GetPoint(300));
+                laserRenderer.SetPosition(currentReflection + 1, startPosition + direction * laserLength);
                 break;
+            }
+        }
+
+        for (int i = currentReflection + 1; i <= maxReflections; i++) 
+        {
+            laserRenderer.SetPosition(i, startPosition + direction * laserLength);
+        }
+    }
+
+    private bool TryReflectLaser(Vector3 position, Vector3 direction, out Vector3 hitPosition, out Vector3 newDirection)
+    {
+        Ray ray = new Ray(position, direction);
+        RaycastHit hit;
+
+        if (Physics.Raycast(ray, out hit, laserLength)) {
+            hitPosition = hit.point;
+            newDirection = Vector3.Reflect(direction, hit.normal);
+            HandleLaserHit(hit);
+
+            if (hit.transform.CompareTag("Mirror")) {
+                return true;
+            } else {
+                return false;
+            }
+        }
+        else {
+            hitPosition = position + direction * laserLength;
+            newDirection = direction;
+            return false;
+        }
+    }
+
+    private void HandleLaserHit(RaycastHit hit)
+    {
+        if (hit.transform.CompareTag("Player")) {
+            Debug.Log("Player hit by laser. Game Over.");
+            Destroy(hit.transform.gameObject);
+        }
+        else if (hit.transform.CompareTag("Target")) {
+            var targetScript = hit.transform.GetComponent<TargetBehavior>();
+            if (targetScript != null) {
+                targetScript.ActivatePlatform();
             }
         }
     }
 }
-

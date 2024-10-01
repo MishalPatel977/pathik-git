@@ -1,55 +1,69 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
-using UnityEngine.SceneManagement; // Required to manage scene transitions
+using UnityEngine.SceneManagement;
 
 
 
 public class ExitDoor : MonoBehaviour
 {
-    public bool isActivated = false;        // Indicates if the exit door has been activated
-    public Color activatedColor = Color.green;  // Color to change to when the door is activated
-    public Color deactivatedColor = Color.red;  // Default color of the door when not activated
-    private Renderer doorRenderer;          // Reference to the Renderer component of the exit door
+    [SerializeField] private Color doorActivatedColor = Color.green;
+    [SerializeField] private Color doorDeactivatedColor = Color.red;
 
-    void Start()
+    private Renderer doorRenderer;
+    private bool isDoorActive = false;
+
+    private void Awake()
     {
-        // Get the Renderer component of the exit door to change its color
         doorRenderer = GetComponent<Renderer>();
-
-        // Set the initial color to deactivated color
-        if (doorRenderer != null)
+        if (doorRenderer == null)
         {
-            doorRenderer.material.color = deactivatedColor;
+            Debug.LogError("Renderer component is missing on ExitDoor object.");
         }
     }
 
-    // This method is called to activate the exit door, usually when all switches are hit by the laser
+    private void Start()
+    {
+        SetDoorState(false);
+    }
+
     public void ActivateExitDoor()
     {
-        isActivated = true; // Mark the door as activated
-        Debug.Log("Exit door is now activated.");
+        if (isDoorActive)
+        {
+            Debug.Log("Exit door is already activated.");
+            return;
+        }
 
-        // Change the door color to indicate it is activated
+        SetDoorState(true);
+    }
+
+    private void SetDoorState(bool isActive)
+    {
+        isDoorActive = isActive;
+
         if (doorRenderer != null)
         {
-            doorRenderer.material.color = activatedColor;
+            doorRenderer.material.color = isActive ? doorActivatedColor : doorDeactivatedColor;
         }
+
+        Debug.Log(isActive ? "Exit door is now active." : "Exit door is now inactive.");
     }
 
-    // This method will handle when the player collides with the exit door
     private void OnTriggerEnter(Collider other)
     {
-        // Check if the player has collided with the exit door and the door is activated
-        if (other.CompareTag("Player") && isActivated)
+        if (other.CompareTag("Player") && isDoorActive)
         {
-            Debug.Log("Player reached the exit door. You win!");
-
-            // Optional: Show a win message or perform other actions (e.g., play a sound)
-
-            // Destroy the player object to indicate the game has ended (replace with your own win condition logic)
-            Destroy(other.gameObject);
+            Debug.Log("Player has reached the exit door. Transitioning to the next scene...");
+            HandlePlayerExit(other.gameObject);
         }
     }
+
+    private void HandlePlayerExit(GameObject player)
+    {
+        Destroy(player);
+        
+    }
+
+   
 }

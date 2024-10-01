@@ -2,68 +2,73 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-
-
-
-
-
-
 public class TargetBehavior : MonoBehaviour
 {
-    public GameObject hiddenPlatform;   // Reference to the hidden platform that will be activated
-    public ExitDoor exitDoor;           // Reference to the Exit Door script for checking puzzle completion
-    private bool isActivated = false;   // To ensure the target is only activated once
+    [SerializeField] private GameObject platformToReveal;       
+    [SerializeField] private ExitDoor linkedExitDoor;           
 
-    private Renderer platformRenderer;  // Reference to the Renderer component of the hidden platform
+    private bool hasBeenActivated = false;
+    private Renderer platformRenderer;
+
+    private void Awake()
+    {
+        if (platformToReveal != null)
+        {
+            platformRenderer = platformToReveal.GetComponent<Renderer>();
+        }
+        else
+        {
+            Debug.LogWarning("No platform assigned to TargetBehavior script.");
+        }
+    }
 
     private void Start()
     {
-        if (hiddenPlatform != null)
-        {
-            // Set the hidden platform to inactive and invisible at the start
-            hiddenPlatform.SetActive(false);
-
-            // Get the Renderer component of the hidden platform (if available)
-            platformRenderer = hiddenPlatform.GetComponent<Renderer>();
-
-            if (platformRenderer != null)
-            {
-                platformRenderer.enabled = false;  // Make the platform invisible
-            }
-        }
+        SetPlatformState(false);
     }
 
     private void OnTriggerEnter(Collider other)
     {
-        // Only activate if the target hasn't been activated before and is hit by a laser
-        if (other.CompareTag("Laser") && !isActivated)
+        if (other.CompareTag("Laser") && !hasBeenActivated)
         {
-            ActivatePlatform(); // Call the common activation method
+            ActivatePlatform();
         }
     }
 
-    // This method activates the hidden platform and checks the exit door's puzzle completion state
     public void ActivatePlatform()
     {
-        if (!isActivated)  // Ensure the platform is only activated once
+        if (hasBeenActivated)
         {
-            if (hiddenPlatform != null)
+            return;
+        }
+
+        SetPlatformState(true);
+
+        if (linkedExitDoor != null)
+        {
+            linkedExitDoor.ActivateExitDoor();
+            Debug.Log("Exit door has been successfully activated.");
+        }
+        else
+        {
+            Debug.LogWarning("No exit door linked to TargetBehavior.");
+        }
+
+        hasBeenActivated = true;
+    }
+
+    private void SetPlatformState(bool isActive)
+    {
+        if (platformToReveal != null)
+        {
+            platformToReveal.SetActive(isActive);
+
+            if (platformRenderer != null)
             {
-                hiddenPlatform.SetActive(true);  // Activate hidden platform
-                if (platformRenderer != null)
-                {
-                    platformRenderer.enabled = true;  // Make the platform visible
-                }
-                Debug.Log("Hidden platform activated and made visible.");
+                platformRenderer.enabled = isActive;
             }
 
-            if (exitDoor != null)
-            {
-                exitDoor.ActivateExitDoor();  // Call the method to activate the exit door
-                Debug.Log("Exit door activated.");
-            }
-
-            isActivated = true;  // Mark this target as activated
+            Debug.Log(isActive ? "Platform revealed and visible." : "Platform hidden and invisible.");
         }
     }
 }

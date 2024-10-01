@@ -1,53 +1,64 @@
 using System.Collections;
 using System.Collections.Generic;
-
 using UnityEngine;
 
 public class PlayerMovement : MonoBehaviour
 {
-    public float moveSpeed = 5f;             // Speed at which player moves
-    public float jumpForce = 7f;             // Increased force applied for jumping
+    [SerializeField] private float speed = 5f;
+    [SerializeField] private float jumpStrength = 7f;
+    [SerializeField] private float rotationSpeed = 100f;  
+    private Rigidbody playerRigidbody;
+    private bool isOnGround = true;
+    private Vector3 movementInput;
 
-    private Rigidbody rb;
-
-    private bool isGrounded;
-
-    void Start()
+    private void Awake()
     {
-        rb = GetComponent<Rigidbody>();
-        rb.freezeRotation = true;            // Prevent player rotation
+        playerRigidbody = GetComponent<Rigidbody>();
+        playerRigidbody.freezeRotation = true;
     }
 
-    void Update()
+    private void Update()
     {
-        MovePlayer();                        // Call movement function
-        Jump();                              // Call jump function
-    }
-
-    void MovePlayer()
-    {
-        float moveX = Input.GetAxis("Horizontal") * moveSpeed * Time.deltaTime;  // Get horizontal input
-        float moveZ = Input.GetAxis("Vertical") * moveSpeed * Time.deltaTime;    // Get vertical input
-
-        Vector3 move = transform.right * moveX + transform.forward * moveZ;
-        rb.MovePosition(transform.position + move);                             // Move player based on input
-    }
-
-    void Jump()
-    {
-        if (Input.GetKeyDown(KeyCode.Space) && isGrounded)
+        CaptureMovementInput();
+        PerformMovement();
+        PerformRotation();  
+        if (Input.GetKeyDown(KeyCode.Space) && isOnGround)
         {
-            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);             // Apply upward force for jump
-            isGrounded = false;
+            PerformJump();
         }
+    }
+
+    private void CaptureMovementInput()
+    {
+        float horizontal = Input.GetAxis("Horizontal");
+        float vertical = Input.GetAxis("Vertical");
+        movementInput = new Vector3(horizontal, 0, vertical).normalized;
+    }
+
+    private void PerformMovement()
+    {
+        Vector3 movement = transform.TransformDirection(movementInput) * speed * Time.deltaTime;
+        playerRigidbody.MovePosition(transform.position + movement);
+    }
+
+    private void PerformRotation()
+    {
+        // Rotate player based on horizontal input
+        float rotationY = Input.GetAxis("Horizontal") * rotationSpeed * Time.deltaTime;
+        transform.Rotate(0, rotationY, 0);
+    }
+
+    private void PerformJump()
+    {
+        playerRigidbody.AddForce(Vector3.up * jumpStrength, ForceMode.Impulse);
+        isOnGround = false;
     }
 
     private void OnCollisionEnter(Collision collision)
     {
-        // Check if player is grounded when colliding with ground or platforms
         if (collision.collider.CompareTag("Ground") || collision.collider.CompareTag("Platform"))
         {
-            isGrounded = true;
+            isOnGround = true;
         }
     }
 }
